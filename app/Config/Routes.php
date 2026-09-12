@@ -21,4 +21,5 @@ $routes->get('/api/inbox/conversations', 'Inbox::conversations');
 $routes->get('/api/inbox/conversations/(:num)/messages', 'Inbox::messages/$1');
 $routes->post('/api/inbox/conversations/(:num)/read', 'Inbox::markRead/$1');
 $routes->patch('/api/inbox/conversations/(:num)', 'Inbox::updateConversation/$1');
+$routes->post('/api/inbox/conversations/(:num)/send', 'Inbox::send/$1');
 $routes->get('/inbox', 'InboxView::index');
