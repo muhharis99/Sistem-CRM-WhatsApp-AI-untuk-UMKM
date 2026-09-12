@@ -13,7 +13,7 @@ class QueueSchema extends Migration
 
     public function down()
     {
-        $this->db->query("ALTER TABLE campaign_recipients DROP COLUMN next_attempt_at, DROP COLUMN attempts, DROP KEY idx_cr_queue(status,next_attempt_at)");
-        $this->db->query("ALTER TABLE campaigns DROP FOREIGN KEY fk_campaign_device, DROP COLUMN device_id, DROP KEY idx_campaign_device");
+        $this->db->query("ALTER TABLE campaign_recipients DROP KEY idx_cr_queue, DROP COLUMN next_attempt_at, DROP COLUMN attempts");
+        $this->db->query("ALTER TABLE campaigns DROP FOREIGN KEY fk_campaign_device, DROP KEY idx_campaign_device, DROP COLUMN device_id");
     }
 }
