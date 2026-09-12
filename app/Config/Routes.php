@@ -1,9 +1,7 @@
 <?php
 
 namespace Config;
-
 use CodeIgniter\Routing\RouteCollection;
-
 /** @var RouteCollection $routes */
 $routes->get('/', 'Home::index');
 $routes->get('/health', 'Health::index');
@@ -48,6 +46,8 @@ $routes->post('/api/internal/campaign-recipients/(:num)/claim', 'CampaignQueue::
 $routes->post('/api/internal/campaign-recipients/(:num)/complete', 'CampaignQueue::complete/$1');
 $routes->get('/api/scheduled-messages', 'ScheduledMessages::index');
 $routes->post('/api/scheduled-messages', 'ScheduledMessages::create');
+$routes->post('/api/internal/scheduled-messages/claim', 'ScheduledMessages::claimDue');
+$routes->post('/api/internal/scheduled-messages/(:num)/complete', 'ScheduledMessages::complete/$1');
 $routes->get('/api/automations', 'Automations::index');
 $routes->post('/api/automations', 'Automations::create');
 $routes->patch('/api/automations/(:num)/toggle', 'Automations::toggle/$1');
