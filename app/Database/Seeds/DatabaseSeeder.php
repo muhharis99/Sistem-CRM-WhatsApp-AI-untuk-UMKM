@@ -26,5 +26,13 @@ class DatabaseSeeder extends Seeder
         $db->table('tenants')->insert(['name' => 'Demo UMKM', 'slug' => 'demo-umkm', 'status' => 'ACTIVE', 'timezone' => 'Asia/Jakarta', 'created_at' => $now, 'updated_at' => $now]);
         $tenantId = $db->insertID();
         $db->table('users')->insert(['tenant_id' => $tenantId, 'role_id' => $role['id'], 'name' => 'Owner Demo', 'email' => 'admin@example.test', 'password_hash' => password_hash('ChangeMe123!', PASSWORD_DEFAULT), 'status' => 'ACTIVE', 'created_at' => $now, 'updated_at' => $now]);
+        $db->table('pipelines')->insert(['tenant_id'=>$tenantId,'name'=>'Sales','is_default'=>1,'created_at'=>$now,'updated_at'=>$now]);
+        $pipelineId = $db->insertID();
+        foreach (['NEW','CONTACTED','QUALIFIED','PROPOSAL','NEGOTIATION','WON','LOST'] as $i => $name) $db->table('pipeline_stages')->insert(['pipeline_id'=>$pipelineId,'name'=>$name,'position'=>$i,'probability'=>0,'created_at'=>$now,'updated_at'=>$now]);
+        $db->table('tags')->insertBatch([
+            ['tenant_id'=>$tenantId,'name'=>'New Lead','color'=>'#0d6efd','created_at'=>$now,'updated_at'=>$now],
+            ['tenant_id'=>$tenantId,'name'=>'VIP','color'=>'#ffc107','created_at'=>$now,'updated_at'=>$now],
+            ['tenant_id'=>$tenantId,'name'=>'Follow Up','color'=>'#dc3545','created_at'=>$now,'updated_at'=>$now],
+        ]);
     }
 }
