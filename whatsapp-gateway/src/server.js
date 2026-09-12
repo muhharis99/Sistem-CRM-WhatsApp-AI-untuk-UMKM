@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import QRCode from 'qrcode';
 import { Server as SocketIOServer } from 'socket.io';
 import { SessionManager } from './services/session-manager.js';
+import { normalizeBaileysMessage } from './handlers/message-normalizer.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -42,14 +43,15 @@ const relay = (event, data) => {
   io.emit(`whatsapp.${event}`, data);
   webhook({ event, ...data }).catch(console.error);
 };
-sessions.on('qr', (data) => relay('qr', data));
-sessions.on('connected', (data) => relay('connected', data));
-sessions.on('disconnected', (data) => relay('disconnected', data));
-sessions.on('logged_out', (data) => relay('logged_out', data));
+sessions.on('qr', (data) => relay('device.qr', data));
+sessions.on('connected', (data) => relay('device.connected', data));
+sessions.on('disconnected', (data) => relay('device.disconnected', data));
+sessions.on('logged_out', (data) => relay('device.logged_out', data));
 sessions.on('messages.upsert', async ({ device, messages, type }) => {
   const event = type === 'notify' ? 'message.received' : 'message.history';
   for (const message of messages) {
-    const data = { tenant_id: Number(device.tenant_id), device_id: Number(device.id), message };
+    const normalized = normalizeBaileysMessage(message);
+    const data = { tenant_id: Number(device.tenant_id), device_id: Number(device.id), ...normalized };
     io.to(`tenant:${device.tenant_id}`).emit('whatsapp.message', { event, ...data });
     webhook({ event, ...data }).catch(console.error);
   }
