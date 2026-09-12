@@ -19,6 +19,25 @@ Production-oriented SaaS foundation for UMKM CRM using CodeIgniter 4, MySQL/Mari
 - Graceful shutdown
 - Seeder with initial RBAC roles/permissions and demo tenant
 
+### Phase 2 — CRM & Sales
+- Customer CRUD and WhatsApp phone normalization
+- Customer tags and tenant-safe attachment
+- Conversation and message persistence
+- Realtime-ready WhatsApp Inbox
+- Outgoing Inbox reply through Node.js/Baileys
+- Sales pipelines, stages, deals and basic tasks schema
+
+### Phase 5 — AI Assistant foundation
+- Provider abstraction via `AIProviderInterface`
+- OpenAI Responses API provider
+- Knowledge base, documents and chunks schema
+- Tenant-scoped knowledge retrieval
+- AI reply suggestion
+- Conversation summary/intent/sentiment/lead score/next action analysis
+- AI usage logging
+- Human handoff flagging that disables `ai_enabled`
+- AI endpoints for knowledge, suggestions, analysis and handoff
+
 ## Run CodeIgniter
 
 ```bash
@@ -40,6 +59,28 @@ npm start
 
 The gateway stores Baileys auth state under `whatsapp-gateway/sessions/` and never commits it to Git.
 
+## AI configuration
+
+Set these in `.env`:
+
+```env
+AI_PROVIDER=openai
+AI_API_KEY=your-key
+AI_MODEL=gpt-5.6-luna
+```
+
+AI does not send WhatsApp messages automatically in the current implementation. The suggestion endpoint returns a draft for human approval. Conversation analysis can disable AI for a conversation when a human handoff is required.
+
+## AI endpoints
+
+```text
+GET    /api/ai/knowledge
+POST   /api/ai/knowledge
+POST   /api/ai/conversations/{id}/suggest
+POST   /api/ai/conversations/{id}/analyze
+PATCH  /api/ai/conversations/{id}/handoff
+```
+
 ## Demo seed
 
 The seed creates `admin@example.test` with password `ChangeMe123!`. Change or remove this account before any non-development deployment.
@@ -58,10 +99,21 @@ Node.js WhatsApp Gateway ------+
         |
         v
 @whiskeysockets/baileys
+
+                +----------------+
+                | AI Service     |
+                | Provider Abstr.|
+                +-------+--------+
+                        |
+                        v
+                 Knowledge Base
+                        |
+                        v
+                    AI Provider
 ```
 
 The WhatsApp socket lifecycle is intentionally isolated in Node.js. CodeIgniter never holds a Baileys socket.
 
 ## Next phases
 
-CRM inbox UI/realtime persistence, customer/tags/sales modules, AI provider abstraction + knowledge retrieval, queue-backed broadcast/automation, analytics, production security hardening and integration tests.
+Product catalog integration into AI, AI UI actions in Inbox, templates, queue-backed broadcast/scheduler/automation, analytics, production security hardening and integration tests.
