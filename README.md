@@ -1,64 +1,67 @@
-# Sistem CRM WhatsApp AI untuk UMKM
+# CRM WhatsApp + AI untuk UMKM
 
-Platform CRM omnichannel berbasis WhatsApp untuk UMKM dengan AI-assisted customer service, sales pipeline, broadcast, scheduler, customer database, dan analytics.
+Production-oriented SaaS foundation for UMKM CRM using CodeIgniter 4, MySQL/MariaDB, Node.js, Socket.IO and the official WhiskeySockets Baileys package.
 
-## Arsitektur
+## Current implementation
 
-- **Backend:** CodeIgniter 4 / PHP 8.2+
-- **Database:** MySQL 8+
-- **WhatsApp Gateway:** Node.js + Baileys
-- **Queue/Cache:** Redis (optional, recommended for production)
-- **Frontend:** Bootstrap 5, DataTables, Chart.js, SweetAlert2
-- **AI:** Provider-agnostic service melalui REST API
-- **Auth:** Session-based authentication + role/permission
+### Phase 1 — Foundation
+- CodeIgniter 4 application bootstrap
+- MySQL migration for tenants, RBAC, WhatsApp devices, customers, conversations, messages and audit logs
+- Session-based authentication skeleton with password hashing
+- Tenant-aware API foundation
+- Node.js WhatsApp gateway isolated from CodeIgniter
+- Baileys persistent multi-session manager using `tenant_id/device_id` directories
+- QR pairing endpoint + Socket.IO events
+- Reconnect with exponential backoff and logout detection
+- Incoming message event relay to CodeIgniter webhook
+- Outgoing text message endpoint
+- Gateway secret + webhook secret
+- Graceful shutdown
+- Seeder with initial RBAC roles/permissions and demo tenant
 
-## Modul MVP
+## Run CodeIgniter
 
-1. Dashboard KPI
-2. Customer/Contact Management
-3. WhatsApp Inbox
-4. Conversation & Message History
-5. AI Reply Suggestion
-6. AI Conversation Summary
-7. Tags & Segmentation
-8. Sales Pipeline / Kanban
-9. Broadcast Campaign
-10. Scheduled Messages
-11. Product Catalog
-12. Basic Analytics
-13. User, Role & Permission
-14. WhatsApp Device/Session Management
-15. API & Webhook
-16. Activity/Audit Log
-
-## Target structure
-
-```text
-/app
-  /Controllers
-  /Models
-  /Services
-  /Libraries
-  /Database
-/node-whatsapp
-  /src
-  /config
-/public
-/resources
-  /views
-/docs
-/tests
+```bash
+composer install
+cp .env.example .env
+php spark migrate
+php spark db:seed DatabaseSeeder
+php spark serve
 ```
 
-## Development principle
+## Run WhatsApp gateway
 
-- Gunakan clean architecture sederhana dan service layer.
-- Jangan menaruh business logic berat di controller.
-- Semua credential/API key menggunakan `.env`.
-- WhatsApp gateway tidak menyimpan credential sensitif di source code.
-- Semua endpoint mutasi memakai validasi input dan CSRF/auth sesuai konteks.
-- Semua timestamp database disimpan konsisten dan ditampilkan sesuai timezone tenant.
+```bash
+cd whatsapp-gateway
+npm install
+cp .env.example .env
+npm start
+```
 
-## Status
+The gateway stores Baileys auth state under `whatsapp-gateway/sessions/` and never commits it to Git.
 
-Bootstrap repository / architecture specification.
+## Demo seed
+
+The seed creates `admin@example.test` with password `ChangeMe123!`. Change or remove this account before any non-development deployment.
+
+## Architecture
+
+```text
+Browser / Bootstrap 5
+        |
+        v
+CodeIgniter 4 CRM  <----> MySQL / MariaDB
+        ^                       ^
+        | REST + signed webhook |
+        v                       |
+Node.js WhatsApp Gateway ------+
+        |
+        v
+@whiskeysockets/baileys
+```
+
+The WhatsApp socket lifecycle is intentionally isolated in Node.js. CodeIgniter never holds a Baileys socket.
+
+## Next phases
+
+CRM inbox UI/realtime persistence, customer/tags/sales modules, AI provider abstraction + knowledge retrieval, queue-backed broadcast/automation, analytics, production security hardening and integration tests.

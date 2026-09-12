@@ -1,17 +1,22 @@
-/.env
+# PHP
+/vendor/
+.env
 .env.*
 !.env.example
-/vendor/
-/node_modules/
 /writable/cache/*
 /writable/logs/*
 /writable/session/*
-/writable/uploads/*
-/node-whatsapp/auth/
-/node-whatsapp/sessions/
-/node-whatsapp/media/
-*.log
-.DS_Store
-Thumbs.db
+/writable/debugbar/*
+
+# Node
+whatsapp-gateway/node_modules/
+whatsapp-gateway/.env
+whatsapp-gateway/sessions/
+whatsapp-gateway/logs/
+
+# IDE/OS
 .idea/
 .vscode/
+*.swp
+.DS_Store
+Thumbs.db

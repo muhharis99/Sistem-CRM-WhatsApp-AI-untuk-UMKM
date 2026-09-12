@@ -1,0 +1,13 @@
+#!/usr/bin/env php
+<?php
+
+use Config\Paths;
+
+chdir(__DIR__);
+require 'vendor/autoload.php';
+require 'app/Config/Paths.php';
+
+$paths = new Paths();
+require rtrim($paths->systemDirectory, '\\/ ') . DIRECTORY_SEPARATOR . 'Boot.php';
+
+exit(CodeIgniter\Boot::bootSpark($paths));
