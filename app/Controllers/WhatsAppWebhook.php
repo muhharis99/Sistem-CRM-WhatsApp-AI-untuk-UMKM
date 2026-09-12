@@ -3,7 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\WhatsAppDeviceModel;
-use CodeIgniter\HTTP\IncomingRequest;
+use App\Services\CrmMessageService;
 
 class WhatsAppWebhook extends BaseApiController
 {
@@ -16,6 +16,7 @@ class WhatsAppWebhook extends BaseApiController
         $payload = $this->request->getJSON(true) ?? [];
         $event = (string)($payload['event'] ?? '');
         $deviceId = isset($payload['device_id']) ? (int)$payload['device_id'] : null;
+
         if ($deviceId && in_array($event, ['device.connected','device.disconnected','device.qr','device.logged_out'], true)) {
             $statuses = [
                 'device.connected' => 'CONNECTED',
@@ -27,6 +28,11 @@ class WhatsAppWebhook extends BaseApiController
             if ($event === 'device.connected') $updates['last_connected_at'] = date('Y-m-d H:i:s');
             if ($event === 'device.disconnected' || $event === 'device.logged_out') $updates['last_disconnected_at'] = date('Y-m-d H:i:s');
             (new WhatsAppDeviceModel())->update($deviceId, $updates);
+        }
+
+        if ($event === 'message.received') {
+            $message = (new CrmMessageService())->ingestIncoming($payload);
+            return $this->respond(['success' => true, 'received' => $event, 'message' => $message]);
         }
 
         return $this->respond(['success' => true, 'received' => $event]);
