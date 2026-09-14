@@ -2,20 +2,21 @@
 
 namespace Config;
 
-use CodeIgniter\Modules\Modules as BaseModules;
+use CodeIgniter\Config\BaseConfig;
 
 /**
- * CodeIgniter module discovery configuration.
+ * Application module discovery configuration.
  *
- * This class is loaded before the application autoloader is initialized,
- * so it must extend the framework Modules base class rather than BaseConfig.
+ * The current application does not register Composer-discovered modules,
+ * so discovery is intentionally disabled. Keeping this config as a normal
+ * BaseConfig also avoids invoking framework services during early Spark boot.
  */
-class Modules extends BaseModules
+class Modules extends BaseConfig
 {
-    public $enabled = true;
-    public $discoverInComposer = true;
-    public $composerPackages = [];
-    public $aliases = [
+    public bool $enabled = false;
+    public bool $discoverInComposer = false;
+    public array $composerPackages = [];
+    public array $aliases = [
         'events',
         'filters',
         'registrars',
