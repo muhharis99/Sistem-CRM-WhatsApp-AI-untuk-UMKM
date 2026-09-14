@@ -61,5 +61,7 @@ $routes->post('/api/internal/scheduled-messages/(:num)/complete', 'ScheduledMess
 $routes->get('/api/automations', 'Automations::index');
 $routes->post('/api/automations', 'Automations::create');
 $routes->patch('/api/automations/(:num)/toggle', 'Automations::toggle/$1');
+$routes->get('/api/analytics/dashboard', 'Analytics::dashboard');
 $routes->get('/inbox', 'InboxView::index');
 $routes->get('/customers/(:num)', 'CustomerWorkspaceView::index/$1');
+$routes->get('/analytics', 'AnalyticsView::index');
