@@ -2,22 +2,24 @@
 
 namespace Config;
 
-use CodeIgniter\Config\BaseConfig;
+use CodeIgniter\Modules\Modules as BaseModules;
 
-class Modules extends BaseConfig
+/**
+ * CodeIgniter module discovery configuration.
+ *
+ * This class is loaded before the application autoloader is initialized,
+ * so it must extend the framework Modules base class rather than BaseConfig.
+ */
+class Modules extends BaseModules
 {
-    /**
-     * Whether module discovery is enabled.
-     */
-    public bool $enabled = true;
-
-    /**
-     * Paths where CodeIgniter should discover modules.
-     *
-     * Keep this empty because the current application does not use
-     * Composer-discovered CodeIgniter modules. Using APPPATH here would
-     * require the APPPATH constant before Config\Modules is instantiated
-     * during Spark bootstrap.
-     */
-    public array $discoverIn = [];
+    public $enabled = true;
+    public $discoverInComposer = true;
+    public $composerPackages = [];
+    public $aliases = [
+        'events',
+        'filters',
+        'registrars',
+        'routes',
+        'services',
+    ];
 }
