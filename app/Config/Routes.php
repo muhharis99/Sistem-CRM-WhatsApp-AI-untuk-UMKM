@@ -33,6 +33,8 @@ $routes->post('/api/ai/knowledge', 'AI::knowledge');
 $routes->post('/api/ai/conversations/(:num)/suggest', 'AI::suggest/$1');
 $routes->post('/api/ai/conversations/(:num)/analyze', 'AI::analyze/$1');
 $routes->patch('/api/ai/conversations/(:num)/handoff', 'AI::toggleHandoff/$1');
+$routes->get('/api/ai/agent', 'AI::agent');
+$routes->put('/api/ai/agent', 'AI::agent');
 $routes->get('/api/templates', 'Templates::index');
 $routes->post('/api/templates', 'Templates::create');
 $routes->put('/api/templates/(:num)', 'Templates::update/$1');
