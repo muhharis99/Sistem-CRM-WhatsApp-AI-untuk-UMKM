@@ -24,6 +24,7 @@ $routes->post('/api/pipelines', 'Pipelines::create');
 $routes->get('/api/deals', 'Pipelines::deals');
 $routes->post('/api/deals', 'Pipelines::createDeal');
 $routes->get('/api/inbox/conversations', 'Inbox::conversations');
+$routes->get('/api/inbox/realtime-token', 'Inbox::realtimeToken');
 $routes->get('/api/inbox/conversations/(:num)/messages', 'Inbox::messages/$1');
 $routes->post('/api/inbox/conversations/(:num)/read', 'Inbox::markRead/$1');
 $routes->patch('/api/inbox/conversations/(:num)', 'Inbox::updateConversation/$1');
