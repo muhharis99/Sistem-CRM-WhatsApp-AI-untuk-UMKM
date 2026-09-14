@@ -28,6 +28,42 @@ class AIService
         return $result;
     }
 
+    public function autoReply(int $tenantId, int $conversationId, string $style = 'friendly', float $threshold = 75, int $maxChars = 1500): array
+    {
+        $conversation = db_connect()->table('conversations')->where(['tenant_id'=>$tenantId,'id'=>$conversationId])->get()->getRowArray();
+        if (!$conversation) throw new \RuntimeException('Conversation tidak ditemukan.');
+        if (!(int)$conversation['ai_enabled']) return ['sent'=>false,'reason'=>'AI_DISABLED'];
+        $existingHandoff = db_connect()->table('ai_conversations')->where(['tenant_id'=>$tenantId,'conversation_id'=>$conversationId])->get()->getRowArray();
+        if ($existingHandoff && (int)$existingHandoff['human_handoff']) return ['sent'=>false,'reason'=>'HUMAN_HANDOFF'];
+
+        $context = $this->conversationContext($tenantId, $conversationId);
+        $system = 'Anda adalah AI customer service UMKM. Gunakan hanya BUSINESS KNOWLEDGE dan RECENT MESSAGES. Jangan mengarang harga, stok, promo, kebijakan, jadwal, atau janji. Jika pertanyaan membutuhkan manusia, refund/komplain berat, data sensitif, atau informasi tidak tersedia, set human_handoff=true. Balasan harus singkat, natural untuk WhatsApp, maksimal '.$maxChars.' karakter. Balas JSON valid tanpa markdown dengan field: reply, confidence, intent, human_handoff.';
+        $result = $this->provider->generate($system, $context);
+        $data = json_decode($this->stripJsonFences($result['text']), true);
+        if (!is_array($data)) throw new \RuntimeException('Output AI Agent bukan JSON valid.');
+        $reply = trim((string)($data['reply'] ?? ''));
+        $confidence = min(100, max(0, (float)($data['confidence'] ?? 0)));
+        $handoff = (bool)($data['human_handoff'] ?? false);
+        $this->logAi($tenantId, $conversationId, 'auto_reply', $context, $result);
+
+        if ($handoff || $confidence < $threshold || $reply === '') {
+            if ($handoff || $confidence < $threshold) {
+                (new ConversationModel())->where('tenant_id',$tenantId)->update($conversationId,['ai_enabled'=>0,'priority'=>'HIGH']);
+                $this->upsertAiConversation($tenantId,$conversationId,$data,true);
+            }
+            return ['sent'=>false,'reason'=>$handoff?'HUMAN_HANDOFF':'LOW_CONFIDENCE','confidence'=>$confidence,'intent'=>$data['intent']??null];
+        }
+
+        $reply = mb_substr($reply, 0, $maxChars);
+        $customer = db_connect()->table('conversations c')->select('c.customer_id,c.device_id,cu.phone')->join('customers cu','cu.id=c.customer_id')->where(['c.tenant_id'=>$tenantId,'c.id'=>$conversationId])->get()->getRowArray();
+        if (!$customer) throw new \RuntimeException('Customer conversation tidak ditemukan.');
+        $db = db_connect();
+        $now = date('Y-m-d H:i:s');
+        $db->table('scheduled_messages')->insert(['tenant_id'=>$tenantId,'customer_id'=>$customer['customer_id'],'device_id'=>$customer['device_id'],'body'=>$reply,'scheduled_at'=>date('Y-m-d H:i:s',time()+2),'timezone'=>'Asia/Jakarta','status'=>'PENDING','attempts'=>0,'max_attempts'=>3,'created_at'=>$now,'updated_at'=>$now]);
+        $this->upsertAiConversation($tenantId,$conversationId,$data,false);
+        return ['sent'=>true,'queued'=>true,'reply'=>$reply,'confidence'=>$confidence,'intent'=>$data['intent']??null];
+    }
+
     public function analyzeConversation(int $tenantId, int $conversationId): array
     {
         $context = $this->conversationContext($tenantId, $conversationId);
@@ -37,11 +73,8 @@ class AIService
         if (!is_array($data)) throw new \RuntimeException('Output analisis AI bukan JSON valid.');
         $data['lead_score'] = min(100, max(0, (float)($data['lead_score'] ?? 0)));
         $data['human_handoff'] = (bool)($data['human_handoff'] ?? false);
-        $aiModel = new AiConversationModel();
-        $existing = $aiModel->where('tenant_id', $tenantId)->where('conversation_id', $conversationId)->first();
-        $payload = ['tenant_id'=>$tenantId,'conversation_id'=>$conversationId,'summary'=>$data['summary'] ?? null,'intent'=>$data['intent'] ?? null,'sentiment'=>$data['sentiment'] ?? null,'lead_score'=>$data['lead_score'],'next_action'=>$data['next_action'] ?? null,'human_handoff'=>$data['human_handoff'] ? 1 : 0];
-        $existing ? $aiModel->update($existing['id'], $payload) : $aiModel->insert($payload);
-        if ($data['human_handoff']) (new ConversationModel())->where('tenant_id',$tenantId)->update($conversationId, ['ai_enabled'=>0,'priority'=>'HIGH']);
+        $this->upsertAiConversation($tenantId,$conversationId,$data,$data['human_handoff']);
+        if ($data['human_handoff']) (new ConversationModel())->where('tenant_id', $tenantId)->update($conversationId, ['ai_enabled'=>0,'priority'=>'HIGH']);
         $this->logAi($tenantId, $conversationId, 'conversation_analysis', $context, $result);
         return $data;
     }
@@ -51,6 +84,13 @@ class AIService
         $builder = db_connect()->table('knowledge_documents d')->select('d.title,d.content')->where('d.tenant_id',$tenantId)->where('d.active',1)->groupStart()->like('d.title',$query)->orLike('d.content',$query)->groupEnd()->limit($limit);
         $rows = $builder->get()->getResultArray();
         return array_map(fn($r) => ['title'=>$r['title'],'content'=>mb_substr($r['content'],0,4000)], $rows);
+    }
+
+    public function agentSettings(int $tenantId): array
+    {
+        $db=db_connect();$row=$db->table('ai_agent_settings')->where('tenant_id',$tenantId)->get()->getRowArray();
+        if(!$row){$db->table('ai_agent_settings')->insert(['tenant_id'=>$tenantId,'enabled'=>0,'auto_reply'=>0,'confidence_threshold'=>75,'style'=>'friendly','max_reply_chars'=>1500,'created_at'=>date('Y-m-d H:i:s'),'updated_at'=>date('Y-m-d H:i:s')]);$row=$db->table('ai_agent_settings')->where('tenant_id',$tenantId)->get()->getRowArray();}
+        return $row;
     }
 
     private function conversationContext(int $tenantId, int $conversationId): string
@@ -64,6 +104,11 @@ class AIService
         $knowledge = $this->knowledge($tenantId, (string)($messages[array_key_last($messages)]['body'] ?? ''), 5);
         $kb = implode("\n\n", array_map(fn($x) => 'KNOWLEDGE: '.$x['title']."\n".$x['content'], $knowledge));
         return "CUSTOMER:\nName: {$conversation['name']}\nPhone: {$conversation['phone']}\nCompany: {$conversation['company']}\nNotes: {$conversation['notes']}\n\nRECENT MESSAGES:\n{$recent}\n\nBUSINESS KNOWLEDGE:\n{$kb}";
+    }
+
+    private function upsertAiConversation(int $tenantId,int $conversationId,array $data,bool $handoff): void
+    {
+        $m=new AiConversationModel();$existing=$m->where(['tenant_id'=>$tenantId,'conversation_id'=>$conversationId])->first();$payload=['tenant_id'=>$tenantId,'conversation_id'=>$conversationId,'summary'=>$data['summary']??null,'intent'=>$data['intent']??null,'sentiment'=>$data['sentiment']??null,'lead_score'=>min(100,max(0,(float)($data['lead_score']??$data['confidence']??0))),'next_action'=>$data['next_action']??null,'human_handoff'=>$handoff?1:0];$existing?$m->update($existing['id'],$payload):$m->insert($payload);
     }
 
     private function stripJsonFences(string $text): string
